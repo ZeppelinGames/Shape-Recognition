@@ -235,6 +235,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cam: {fileID: 519420031}
+  detectionLeniency: 0.3
 --- !u!120 &1932706439
 LineRenderer:
   m_ObjectHideFlags: 0
