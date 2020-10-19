@@ -19,6 +19,7 @@ public class LineDraw : MonoBehaviour
 
     private List<Vector3> gizmoPoints = new List<Vector3>();
     private List<Vector3> insidePointsList = new List<Vector3>();
+    private List<Vector3> shapePointGiz = new List<Vector3>();
 
     // Start is called before the first frame update
     void Start()
@@ -72,39 +73,36 @@ public class LineDraw : MonoBehaviour
 
     void DetectShape()
     {
+        shapePointGiz.Clear();
         insidePointsList.Clear();
         gizmoPoints.Clear();
 
-        //LINE/DRAWING BOUNDS
-        Bounds shapeBounds = new Bounds(transform.position, Vector3.zero);
-        foreach (Vector3 point in linePoints)
-        {
-            shapeBounds.Encapsulate(point);
-        }
+        //CALC CENTER OF LINE POINTS
+        Vector3 lineCenter = FindCentroid(linePoints.ToArray());
 
-        //NORMALISED SHAPE POINTS
-        Vector3[] straightLine = new Vector3[] {
-            new Vector3(0, 1, 0),
-            new Vector3(0, -1, 0)
-        };
+        //CALC LINE BOUNDS
+        (Vector3 lineTopBound, Vector3 lineBottomBound) = FindBounds(linePoints.ToArray());
 
-        //SHAPE BOUNDS
-        Bounds straightLineBounds = new Bounds();
-        foreach (Vector3 point in straightLine)
-        {
-            straightLineBounds.Encapsulate(point);
-        }
+        //SET SHAPE DATA
+        Vector3[] shapePoints = Shapes.horizontalLine;
+
+        //SHAPE CENTRIOD
+        Vector3 shapeCenter = FindCentroid(shapePoints);
 
         //OBJECTS OFFSET
-        Vector3 offset = shapeBounds.center - straightLineBounds.center;
+        Vector3 offset = lineCenter - shapeCenter;
+
+        float lineScale = lineTopBound.x - lineBottomBound.x;
+        if(lineTopBound.y - lineBottomBound.y > lineScale)
+        {
+            lineScale = lineTopBound.y - lineBottomBound.y;
+        }
 
         List<Vector3> scaledPoints = new List<Vector3>();
-        Bounds scaledBounds = new Bounds();
-        foreach (Vector3 point in straightLine)
+        foreach (Vector3 point in shapePoints)
         {
-            Vector3 scaledPoint = (point * shapeBounds.extents.y) + (offset * 2);
+            Vector3 scaledPoint = (point + offset);
             scaledPoints.Add(scaledPoint);
-            scaledBounds.Encapsulate(scaledPoint);
         }
 
         int insidePoints = 0;
@@ -113,36 +111,36 @@ public class LineDraw : MonoBehaviour
             gizmoPoints.Add(scaledPoints[n]);
             gizmoPoints.Add(scaledPoints[n + 1]);
 
-            //GET DISTANCE BETWEEN POINTS
-            float pointDist = Vector3.Distance(scaledPoints[n], scaledPoints[n + 1]);
+            //LINE GRADIENT 
+            float m = (scaledPoints[n + 1].y - scaledPoints[n].y) / (scaledPoints[n + 1].x - scaledPoints[n].x);
+            //INVERT GRADIENT
+            float invertedGradient = -1 / m;
 
-            //CALCULATE ANGLE FROM ONE POINT
-            float angle = Mathf.Acos(scaledPoints[n + 1].x / pointDist);
-            //90 DEGREES OUT FROM POINT (EXTENTS)
-            float upAngle = angle + 90;
-            float downAngle = angle - 90;
+            float c1 = scaledPoints[n].y - (invertedGradient * scaledPoints[n].x); //y-mx=c  
+            float c2 = -c1;
 
-            //CREATE RECTANGLE TOP POINTS
-            Vector3 TL = scaledPoints[n] + new Vector3(Mathf.Cos(upAngle) * detectionLeniency, Mathf.Sin(upAngle) * detectionLeniency);
-            Vector3 TR = scaledPoints[n] + new Vector3(Mathf.Cos(downAngle) * detectionLeniency, Mathf.Sin(downAngle) * detectionLeniency);
+            //y= mx +b
+            float x = scaledPoints[n].x;
 
-            //CALCULATE ANGLE FROM OTHER POINT
-            float angle2 = Mathf.Acos(scaledPoints[n].x / pointDist);
-            //90 DEGREES OUT FROM POINT (EXTENTS)
-            float upAngle2 = angle2 + 90;
-            float downAngle2 = angle2 - 90;
+            /*Vector3 TL = new Vector3(x - detectionLeniency, invertedGradient * x + c1);
+            Vector3 TR = new Vector3(-x + detectionLeniency, invertedGradient * -x + c1);
 
-            //CREATE RECTANGLE BOTTOM POINTS
-            Vector3 BL = scaledPoints[n + 1] + new Vector3(Mathf.Cos(upAngle2) * detectionLeniency, Mathf.Sin(upAngle2) * detectionLeniency);
-            Vector3 BR = scaledPoints[n + 1] + new Vector3(Mathf.Cos(downAngle2) * detectionLeniency, Mathf.Sin(downAngle2) * detectionLeniency);
+            Vector3 BL = new Vector3(x - detectionLeniency, invertedGradient * x + c2);
+            Vector3 BR = new Vector3(-x + detectionLeniency, invertedGradient * -x + c2);*/
 
-            //gizmoPoints.AddRange(new Vector3[] { TL, TR, BL, BR });
+            Vector3 TL = scaledPoints[n];
+            Vector3 TR = scaledPoints[n];
+            Vector3 BR = scaledPoints[n + 1];
+            Vector3 BL = scaledPoints[n + 1];
+
+            shapePointGiz.AddRange(new Vector3[] { TL, scaledPoints[n], TR, BR, scaledPoints[n + 1], BL });
+            gizmoPoints.AddRange(new Vector3[] { TL, TR, BR, BL });
 
             //LOOP THROUGH EACH POINT
             foreach (Vector3 point in linePoints)
             {
                 //SEE IF POINT IS WITHIN RECT
-                if (ContainsPoint(new Vector2[] { TL, TR, BL, BR }, point))
+                if (ContainsPoint(new Vector2[] { TL, scaledPoints[n], TR, BR, scaledPoints[n + 1], BL }, point))
                 {
                     insidePointsList.Add(point);
                     insidePoints++;
@@ -172,18 +170,66 @@ public class LineDraw : MonoBehaviour
         return inside;
     }
 
+    Vector3 FindCentroid(Vector3[] points)
+    {
+        Vector3 avgPoint = Vector3.zero;
+        foreach (Vector3 point in points)
+        {
+            avgPoint += point;
+        }
+        return avgPoint / linePoints.Count;
+    }
+
+    (Vector3 topBound, Vector3 bottomBound) FindBounds(Vector3[] points)
+    {
+        Vector3 tempTopBound = Vector3.zero;
+        Vector3 tempBottomBound = Vector3.zero;
+        foreach (Vector3 point in points)
+        {
+            if(point.x > tempTopBound.x)
+            {
+                tempTopBound.x = point.x;
+            }
+            if(point.y > tempTopBound.y)
+            {
+                tempTopBound.y = point.y;
+            }
+
+            if (point.x < tempBottomBound.x)
+            {
+                tempBottomBound.x = point.x;
+            }
+            if (point.y < tempBottomBound.y)
+            {
+                tempBottomBound.y = point.y;
+            }
+        }
+
+        return (tempTopBound, tempBottomBound);
+    }
+
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
-        foreach(Vector3 gizPoint in gizmoPoints)
+        foreach (Vector3 gizPoint in gizmoPoints)
         {
             Gizmos.DrawWireSphere(gizPoint, 0.1f);
         }
 
         Gizmos.color = Color.green;
-        foreach(Vector3 point in insidePointsList)
+        foreach (Vector3 point in insidePointsList)
         {
             Gizmos.DrawWireSphere(point, 0.1f);
+        }
+
+        Gizmos.color = Color.blue;
+        if (shapePointGiz.Count > 1)
+        {
+            for (int n = 0; n < shapePointGiz.Count - 1; n++)
+            {
+                Gizmos.DrawLine(shapePointGiz[n], shapePointGiz[n + 1]);
+            }
+            Gizmos.DrawLine(shapePointGiz[0], shapePointGiz[shapePointGiz.Count - 1]);
         }
     }
 }
