@@ -84,7 +84,7 @@ public class LineDraw : MonoBehaviour
         (Vector3 lineTopBound, Vector3 lineBottomBound) = FindBounds(linePoints.ToArray());
 
         //SET SHAPE DATA
-        Vector3[] shapePoints = Shapes.horizontalLine;
+        Vector3[] shapePoints = Shapes.lightningBolt;
 
         //SHAPE CENTRIOD
         Vector3 shapeCenter = FindCentroid(shapePoints);
@@ -101,40 +101,27 @@ public class LineDraw : MonoBehaviour
         List<Vector3> scaledPoints = new List<Vector3>();
         foreach (Vector3 point in shapePoints)
         {
-            Vector3 scaledPoint = (point + offset);
+            Vector3 scaledPoint = (point*(lineScale/2)) + offset;
             scaledPoints.Add(scaledPoint);
         }
 
         int insidePoints = 0;
         for (int n = 0; n < scaledPoints.Count - 1; n++)
         {
-            gizmoPoints.Add(scaledPoints[n]);
-            gizmoPoints.Add(scaledPoints[n + 1]);
+            //gizmoPoints.Add(scaledPoints[n]);
+            //gizmoPoints.Add(scaledPoints[n + 1]);
 
-            //LINE GRADIENT 
-            float m = (scaledPoints[n + 1].y - scaledPoints[n].y) / (scaledPoints[n + 1].x - scaledPoints[n].x);
-            //INVERT GRADIENT
-            float invertedGradient = -1 / m;
+            Vector2 direction = scaledPoints[n+1] - scaledPoints[n];
+            Vector2 perpDirection = new Vector2(-direction.y, direction.x).normalized;
 
-            float c1 = scaledPoints[n].y - (invertedGradient * scaledPoints[n].x); //y-mx=c  
-            float c2 = -c1;
+            Vector3 TR = scaledPoints[n] + ((Vector3)perpDirection * detectionLeniency);
+            Vector3 TL = scaledPoints[n] - ((Vector3)perpDirection * detectionLeniency);  
 
-            //y= mx +b
-            float x = scaledPoints[n].x;
-
-            /*Vector3 TL = new Vector3(x - detectionLeniency, invertedGradient * x + c1);
-            Vector3 TR = new Vector3(-x + detectionLeniency, invertedGradient * -x + c1);
-
-            Vector3 BL = new Vector3(x - detectionLeniency, invertedGradient * x + c2);
-            Vector3 BR = new Vector3(-x + detectionLeniency, invertedGradient * -x + c2);*/
-
-            Vector3 TL = scaledPoints[n];
-            Vector3 TR = scaledPoints[n];
-            Vector3 BR = scaledPoints[n + 1];
-            Vector3 BL = scaledPoints[n + 1];
+            Vector3 BR = scaledPoints[n + 1] + ((Vector3)perpDirection * detectionLeniency);
+            Vector3 BL = scaledPoints[n + 1] - ((Vector3)perpDirection * detectionLeniency);
 
             shapePointGiz.AddRange(new Vector3[] { TL, scaledPoints[n], TR, BR, scaledPoints[n + 1], BL });
-            gizmoPoints.AddRange(new Vector3[] { TL, TR, BR, BL });
+            gizmoPoints.AddRange(new Vector3[] { TL, TR });
 
             //LOOP THROUGH EACH POINT
             foreach (Vector3 point in linePoints)

@@ -236,7 +236,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cam: {fileID: 519420031}
   linePointSpacing: 0.01
-  detectionLeniency: 1
+  detectionLeniency: 0.3
 --- !u!120 &1932706439
 LineRenderer:
   m_ObjectHideFlags: 0
