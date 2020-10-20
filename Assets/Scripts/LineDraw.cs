@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Unity.Mathematics;
 using UnityEditor.iOS.Extensions.Common;
@@ -22,6 +23,7 @@ public class LineDraw : MonoBehaviour
     private List<Vector3> gizmoPoints = new List<Vector3>();
     private List<Vector3> insidePointsList = new List<Vector3>();
     private List<Vector3> shapePointGiz = new List<Vector3>();
+    private List<Vector3> outsidePoints = new List<Vector3>();
 
     // Start is called before the first frame update
     void Start()
@@ -78,9 +80,11 @@ public class LineDraw : MonoBehaviour
 
     void DetectShape()
     {
+        linePoints = linePoints.Distinct().ToList();
         shapePointGiz.Clear();
         insidePointsList.Clear();
         gizmoPoints.Clear();
+        outsidePoints.Clear();
 
         //CALC CENTER OF LINE POINTS
         Vector3 lineCenter = FindCentroid(linePoints.ToArray());
@@ -143,7 +147,18 @@ public class LineDraw : MonoBehaviour
             }
         }
 
+        outsidePoints.AddRange(linePoints);
+        foreach(Vector3 point in insidePointsList)
+        {
+            if (outsidePoints.Contains(point))
+            {
+                outsidePoints.Remove(point);
+            }
+        }
+        outsidePoints = outsidePoints.Distinct().ToList();
+
         //CALC PROBABILITY OF SHAPE DRAWN
+        Debug.Log(string.Format("{0}/{1}", insidePoints, currPoints));
         float probability = (float)insidePoints / (float)currPoints * 100;
         Debug.Log(string.Format("PERCENT: {0} %", probability));
 
@@ -214,6 +229,12 @@ public class LineDraw : MonoBehaviour
 
         Gizmos.color = Color.green;
         foreach (Vector3 point in insidePointsList)
+        {
+            Gizmos.DrawWireSphere(point, 0.1f);
+        }
+
+        Gizmos.color = Color.magenta;
+        foreach (Vector3 point in outsidePoints)
         {
             Gizmos.DrawWireSphere(point, 0.1f);
         }
