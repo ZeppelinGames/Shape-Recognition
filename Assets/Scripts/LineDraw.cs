@@ -9,11 +9,12 @@ using UnityEngine;
 public class LineDraw : MonoBehaviour
 {
     public Camera cam;
-    public Transform trailFX;
 
     [Range(0.01f, 1)]
     public float linePointSpacing = 0.25f;
     public float detectionLeniency = 0.3f;
+
+    private int currPoints;
 
     private LineRenderer lr;
     private List<Vector3> linePoints = new List<Vector3>();
@@ -38,13 +39,6 @@ public class LineDraw : MonoBehaviour
             Vector3 mousePos = cam.ScreenToWorldPoint(Input.mousePosition);
             mousePos.z = 0;
 
-            trailFX.position = mousePos;
-
-            if (!trailFX.gameObject.activeInHierarchy)
-            {
-                trailFX.gameObject.SetActive(true);
-            }
-
             //SEE IF CURRENT POINT COUNT IS GREATER THAN 2 (NEEDED FOR DIST CALC)
             if (lr.positionCount > 2)
             {
@@ -52,6 +46,7 @@ public class LineDraw : MonoBehaviour
                 if (Vector3.Distance(mousePos, lr.GetPosition(lr.positionCount - 2)) > linePointSpacing)
                 {
                     //ADD NEW POINT TO LINE
+                    currPoints++;
                     lr.positionCount++;
                     lr.SetPosition(lr.positionCount - 1, mousePos);
                     linePoints.Add(mousePos);
@@ -60,6 +55,7 @@ public class LineDraw : MonoBehaviour
             else
             {
                 //ADD NEW POINT TO LINE
+                currPoints++;
                 lr.positionCount++;
                 lr.SetPosition(lr.positionCount - 1, mousePos);
                 linePoints.Add(mousePos);
@@ -70,7 +66,7 @@ public class LineDraw : MonoBehaviour
         {
             DetectShape();
             lr.positionCount = 0;
-            trailFX.gameObject.SetActive(false);
+            currPoints = 0;
         }
 
         if (Input.GetKeyDown(KeyCode.R))
@@ -148,7 +144,7 @@ public class LineDraw : MonoBehaviour
         }
 
         //CALC PROBABILITY OF SHAPE DRAWN
-        float probability = (float)insidePoints / (float)linePoints.Count * 100;
+        float probability = (float)insidePoints / (float)currPoints * 100;
         Debug.Log(string.Format("PERCENT: {0} %", probability));
 
         linePoints.Clear();
@@ -176,13 +172,14 @@ public class LineDraw : MonoBehaviour
         {
             avgPoint += point;
         }
-        return avgPoint / linePoints.Count;
+        return avgPoint / points.Length;
     }
 
     (Vector3 topBound, Vector3 bottomBound) FindBounds(Vector3[] points)
     {
         Vector3 tempTopBound = Vector3.zero;
         Vector3 tempBottomBound = Vector3.zero;
+
         foreach (Vector3 point in points)
         {
             if(point.x > tempTopBound.x)
