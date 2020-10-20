@@ -4,6 +4,23 @@ using UnityEngine;
 
 public class Shapes
 {
+    public static Vector3[] rectangle = new Vector3[]
+    {
+        new Vector3(-1,1),
+        new Vector3(1,1),
+        new Vector3(1,-1),
+        new Vector3(-1,-1),
+        new Vector3(-1,1)
+    };
+
+    public static Vector3[] N = new Vector3[]
+    {
+        new Vector3(-0.5f,-1),
+        new Vector3(-0.5f,1),
+        new Vector3(0.5f,-1),
+        new Vector3(0.5f,1)
+    };
+
     public static Vector3[] verticalLine = new Vector3[] {
             new Vector3(0, 1, 0),
             new Vector3(0, -1, 0)

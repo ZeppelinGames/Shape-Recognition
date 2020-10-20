@@ -9,6 +9,7 @@ using UnityEngine;
 public class LineDraw : MonoBehaviour
 {
     public Camera cam;
+    public Transform trailFX;
 
     [Range(0.01f, 1)]
     public float linePointSpacing = 0.25f;
@@ -37,6 +38,13 @@ public class LineDraw : MonoBehaviour
             Vector3 mousePos = cam.ScreenToWorldPoint(Input.mousePosition);
             mousePos.z = 0;
 
+            trailFX.position = mousePos;
+
+            if (!trailFX.gameObject.activeInHierarchy)
+            {
+                trailFX.gameObject.SetActive(true);
+            }
+
             //SEE IF CURRENT POINT COUNT IS GREATER THAN 2 (NEEDED FOR DIST CALC)
             if (lr.positionCount > 2)
             {
@@ -62,6 +70,7 @@ public class LineDraw : MonoBehaviour
         {
             DetectShape();
             lr.positionCount = 0;
+            trailFX.gameObject.SetActive(false);
         }
 
         if (Input.GetKeyDown(KeyCode.R))
@@ -84,7 +93,7 @@ public class LineDraw : MonoBehaviour
         (Vector3 lineTopBound, Vector3 lineBottomBound) = FindBounds(linePoints.ToArray());
 
         //SET SHAPE DATA
-        Vector3[] shapePoints = Shapes.lightningBolt;
+        Vector3[] shapePoints = Shapes.N;
 
         //SHAPE CENTRIOD
         Vector3 shapeCenter = FindCentroid(shapePoints);
