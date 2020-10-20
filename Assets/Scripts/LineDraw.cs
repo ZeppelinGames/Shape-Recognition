@@ -61,7 +61,7 @@ public class LineDraw : MonoBehaviour
         if (Input.GetMouseButtonUp(0))
         {
             DetectShape();
-            //lr.positionCount = 0;
+            lr.positionCount = 0;
         }
 
         if (Input.GetKeyDown(KeyCode.R))
@@ -84,7 +84,7 @@ public class LineDraw : MonoBehaviour
         (Vector3 lineTopBound, Vector3 lineBottomBound) = FindBounds(linePoints.ToArray());
 
         //SET SHAPE DATA
-        Vector3[] shapePoints = Shapes.lightningBolt;
+        Vector3[] shapePoints = Shapes.diagonalLeft;
 
         //SHAPE CENTRIOD
         Vector3 shapeCenter = FindCentroid(shapePoints);
@@ -127,16 +127,19 @@ public class LineDraw : MonoBehaviour
             foreach (Vector3 point in linePoints)
             {
                 //SEE IF POINT IS WITHIN RECT
-                if (ContainsPoint(new Vector2[] { TL, scaledPoints[n], TR, BR, scaledPoints[n + 1], BL }, point))
+                if (ContainsPoint(new Vector2[] { TL, TR, BR, BL }, point))
                 {
-                    insidePointsList.Add(point);
-                    insidePoints++;
+                    if (!insidePointsList.Contains(point))
+                    {
+                        insidePointsList.Add(point);
+                        insidePoints++;
+                    }
                 }
             }
         }
 
         //CALC PROBABILITY OF SHAPE DRAWN
-        float probability = Mathf.Round((float)insidePoints / (float)linePoints.Count * 100);
+        float probability = (float)insidePoints / (float)linePoints.Count * 100;
         Debug.Log(string.Format("PERCENT: {0} %", probability));
 
         linePoints.Clear();
