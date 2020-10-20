@@ -84,7 +84,7 @@ public class LineDraw : MonoBehaviour
         (Vector3 lineTopBound, Vector3 lineBottomBound) = FindBounds(linePoints.ToArray());
 
         //SET SHAPE DATA
-        Vector3[] shapePoints = Shapes.diagonalLeft;
+        Vector3[] shapePoints = Shapes.lightningBolt;
 
         //SHAPE CENTRIOD
         Vector3 shapeCenter = FindCentroid(shapePoints);
@@ -120,8 +120,8 @@ public class LineDraw : MonoBehaviour
             Vector3 BR = scaledPoints[n + 1] + ((Vector3)perpDirection * detectionLeniency);
             Vector3 BL = scaledPoints[n + 1] - ((Vector3)perpDirection * detectionLeniency);
 
-            shapePointGiz.AddRange(new Vector3[] { TL, scaledPoints[n], TR, BR, scaledPoints[n + 1], BL });
-            gizmoPoints.AddRange(new Vector3[] { TL, TR });
+            shapePointGiz.AddRange(new Vector3[] { TL, TR, BR, BL });
+            gizmoPoints.AddRange(new Vector3[] { TL, TR, BR,BL });
 
             //LOOP THROUGH EACH POINT
             foreach (Vector3 point in linePoints)
@@ -215,11 +215,18 @@ public class LineDraw : MonoBehaviour
         Gizmos.color = Color.blue;
         if (shapePointGiz.Count > 1)
         {
-            for (int n = 0; n < shapePointGiz.Count - 1; n++)
+            for (int n = 0; n < shapePointGiz.Count - 1; n+=4)
             {
+                int index = n;
+                if(n >= shapePointGiz.Count)
+                {
+                    index = n - shapePointGiz.Count;
+                }
                 Gizmos.DrawLine(shapePointGiz[n], shapePointGiz[n + 1]);
+                Gizmos.DrawLine(shapePointGiz[n + 1], shapePointGiz[n + 2]);
+                Gizmos.DrawLine(shapePointGiz[n + 2], shapePointGiz[n+3]);
+                Gizmos.DrawLine(shapePointGiz[n + 3], shapePointGiz[n]);
             }
-            Gizmos.DrawLine(shapePointGiz[0], shapePointGiz[shapePointGiz.Count - 1]);
         }
     }
 }
