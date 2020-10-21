@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Shapes
 {
-    public static Vector3[] rectangle = new Vector3[]
+    public static Vector3[] square = new Vector3[]
     {
         new Vector3(-1,1),
         new Vector3(1,1),
@@ -49,5 +49,13 @@ public class Shapes
         new Vector3(-1,0),
         new Vector3(1,0),
         new Vector3(0,-1)
+    };
+
+    public static Vector3[] closedXLeft = new Vector3[]
+    {
+        new Vector3(1,1),
+        new Vector3(-1,-1),
+        new Vector3(-1,1),
+        new Vector3(1,-1)
     };
 }

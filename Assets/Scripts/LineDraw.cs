@@ -18,6 +18,9 @@ public class LineDraw : MonoBehaviour
     private int currPoints;
 
     private LineRenderer lr;
+
+    private Vector3[][] shapes;
+
     private List<Vector3> linePoints = new List<Vector3>();
 
     private List<Vector3> gizmoPoints = new List<Vector3>();
@@ -30,6 +33,17 @@ public class LineDraw : MonoBehaviour
     {
         lr = GetComponent<LineRenderer>();
         lr.positionCount = 0;
+
+        shapes = new Vector3[][] { 
+            Shapes.verticalLine, //0
+            Shapes.horizontalLine, //1
+            Shapes.diagonalLeft, //2
+            Shapes.diagonalRight, //3
+            Shapes.N, //4
+            Shapes.lightningBolt, //5
+            Shapes.closedXLeft, //6
+            Shapes.square //7
+        };
     }
 
     // Update is called once per frame
@@ -70,21 +84,16 @@ public class LineDraw : MonoBehaviour
             lr.positionCount = 0;
             currPoints = 0;
         }
-
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            //RESET DRAWN LINE
-            lr.positionCount = 0;
-        }
     }
 
     void DetectShape()
     {
-        linePoints = linePoints.Distinct().ToList();
         shapePointGiz.Clear();
         insidePointsList.Clear();
         gizmoPoints.Clear();
         outsidePoints.Clear();
+
+        linePoints = linePoints.Distinct().ToList();
 
         //CALC CENTER OF LINE POINTS
         Vector3 lineCenter = FindCentroid(linePoints.ToArray());
@@ -93,50 +102,56 @@ public class LineDraw : MonoBehaviour
         (Vector3 lineTopBound, Vector3 lineBottomBound) = FindBounds(linePoints.ToArray());
 
         //SET SHAPE DATA
-        Vector3[] shapePoints = Shapes.N;
-
-        //SHAPE CENTRIOD
-        Vector3 shapeCenter = FindCentroid(shapePoints);
-
-        //OBJECTS OFFSET
-        Vector3 offset = lineCenter - shapeCenter;
-
-        float lineScale = lineTopBound.x - lineBottomBound.x;
-        if(lineTopBound.y - lineBottomBound.y > lineScale)
+        int[] probabilities = new int[shapes.Length];
+        for (int i = 0; i < shapes.Length; i++)
         {
-            lineScale = lineTopBound.y - lineBottomBound.y;
-        }
+            Vector3[] shapePoints = shapes[i];
 
-        List<Vector3> scaledPoints = new List<Vector3>();
-        foreach (Vector3 point in shapePoints)
-        {
-            Vector3 scaledPoint = (point*(lineScale/2)) + offset;
-            scaledPoints.Add(scaledPoint);
-        }
+            //SHAPE CENTRIOD
+            Vector3 shapeCenter = FindCentroid(shapePoints);
 
-        int insidePoints = 0;
-        for (int n = 0; n < scaledPoints.Count - 1; n++)
-        {
-            //gizmoPoints.Add(scaledPoints[n]);
-            //gizmoPoints.Add(scaledPoints[n + 1]);
+            //OBJECTS OFFSET
+            Vector3 offset = lineCenter - shapeCenter;
 
-            Vector2 direction = scaledPoints[n+1] - scaledPoints[n];
-            Vector2 perpDirection = new Vector2(-direction.y, direction.x).normalized;
+            float lineScale = lineTopBound.x - lineBottomBound.x;
+            if (lineTopBound.y - lineBottomBound.y > lineScale)
+            {
+                lineScale = lineTopBound.y - lineBottomBound.y;
+            }
 
-            Vector3 TR = scaledPoints[n] + ((Vector3)perpDirection * detectionLeniency);
-            Vector3 TL = scaledPoints[n] - ((Vector3)perpDirection * detectionLeniency);  
+            List<Vector3> scaledPoints = new List<Vector3>();
+            foreach (Vector3 point in shapePoints)
+            {
+                Vector3 scaledPoint = (point * (lineScale / 2)) + offset;
+                scaledPoints.Add(scaledPoint);
+            }
 
-            Vector3 BR = scaledPoints[n + 1] + ((Vector3)perpDirection * detectionLeniency);
-            Vector3 BL = scaledPoints[n + 1] - ((Vector3)perpDirection * detectionLeniency);
+            int insidePoints = 0;
+            List<Vector2> expandedPoints = new List<Vector2>();
+            for (int n = 0; n < scaledPoints.Count - 1; n++)
+            {
+                //gizmoPoints.Add(scaledPoints[n]);
+                //gizmoPoints.Add(scaledPoints[n + 1]);
 
-            shapePointGiz.AddRange(new Vector3[] { TL, TR, BR, BL });
-            gizmoPoints.AddRange(new Vector3[] { TL, TR, BR,BL });
+                Vector2 direction = scaledPoints[n + 1] - scaledPoints[n];
+                Vector2 perpDirection = new Vector2(-direction.y, direction.x).normalized;
+
+                Vector3 TR = scaledPoints[n] + ((Vector3)perpDirection * detectionLeniency);
+                Vector3 TL = scaledPoints[n] - ((Vector3)perpDirection * detectionLeniency);
+
+                Vector3 BR = scaledPoints[n + 1] + ((Vector3)perpDirection * detectionLeniency);
+                Vector3 BL = scaledPoints[n + 1] - ((Vector3)perpDirection * detectionLeniency);
+
+                shapePointGiz.AddRange(new Vector3[] { TR, TL, BL, BR });
+
+                expandedPoints.AddRange(new Vector2[] { TR, TL, BL, BR }); 
+            }
 
             //LOOP THROUGH EACH POINT
             foreach (Vector3 point in linePoints)
             {
                 //SEE IF POINT IS WITHIN RECT
-                if (ContainsPoint(new Vector2[] { TL, TR, BR, BL }, point))
+                if (PointInPolygon(expandedPoints.ToArray(), point))
                 {
                     if (!insidePointsList.Contains(point))
                     {
@@ -144,40 +159,86 @@ public class LineDraw : MonoBehaviour
                         insidePoints++;
                     }
                 }
-            }
+            } 
+
+            //CALC PROBABILITY OF SHAPE DRAWN
+            float probability = (float)insidePoints / (float)currPoints * 100;
+            Debug.Log(string.Format("PERCENT: {0} %", probability));
+
+            probabilities[i] = Mathf.RoundToInt(probability);
         }
 
-        outsidePoints.AddRange(linePoints);
-        foreach(Vector3 point in insidePointsList)
+        int highestProb = 0;
+        int probIndex = -1;
+        for(int i =0; i < probabilities.Length;i++)
         {
-            if (outsidePoints.Contains(point))
+            if(probabilities[i] > highestProb)
             {
-                outsidePoints.Remove(point);
+                highestProb = probabilities[i];
+                probIndex = i;
             }
         }
-        outsidePoints = outsidePoints.Distinct().ToList();
 
-        //CALC PROBABILITY OF SHAPE DRAWN
-        Debug.Log(string.Format("{0}/{1}", insidePoints, currPoints));
-        float probability = (float)insidePoints / (float)currPoints * 100;
-        Debug.Log(string.Format("PERCENT: {0} %", probability));
+        //Debug.Log(string.Format("MOST LIKELY: {0} {1}%", probIndex.ToString(),highestProb.ToString()));
+        if(highestProb >=40)
+        {
+            Debug.Log(string.Format("{0} RAN", probIndex.ToString()));
+            gizmoPoints.AddRange(shapes[probIndex]);
+        }
 
         linePoints.Clear();
     }
 
-    bool ContainsPoint(Vector2[] polyPoints, Vector2 p)
+    bool PointInPolygon(Vector2[] Points, Vector2 point)
     {
-        int j = polyPoints.Length - 1;
-        bool inside = false;
-        for (int i = 0; i < polyPoints.Length; j = i++)
+        // Get the angle between the point and the
+        // first and last vertices.
+        int max_point = Points.Length - 1;
+        float total_angle = GetAngle(Points[max_point], point, Points[0]);
+
+        // Add the angles from the point
+        // to each other pair of vertices.
+        for (int i = 0; i < max_point; i++)
         {
-            Vector2 pi = polyPoints[i];
-            Vector2 pj = polyPoints[j];
-            if (((pi.y <= p.y && p.y < pj.y) || (pj.y <= p.y && p.y < pi.y)) &&
-                (p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y) + pi.x))
-                inside = !inside;
+            total_angle += GetAngle(Points[i], point, Points[i + 1]);
         }
-        return inside;
+        return (Mathf.Abs(total_angle) > 1);
+    }
+
+    float GetAngle(Vector2 a, Vector2 b, Vector2 c)
+    {
+        // Get the dot product.
+        float dot_product = DotProduct(a,b,c);
+
+        // Get the cross product.
+        float cross_product = CrossProductLength(a,b,c);
+
+        // Calculate the angle.
+        return (float)Mathf.Atan2(cross_product, dot_product);
+    }
+
+    public static float CrossProductLength(Vector2 a, Vector2 b, Vector2 c)
+    {
+        // Get the vectors' coordinates.
+        float BAx = a.x - b.x;
+        float BAy = a.y - b.y;
+        float BCx = c.x - b.x;
+        float BCy = c.y - b.y;
+
+        // Calculate the Z coordinate of the cross product.
+        return (BAx * BCy - BAy * BCx);
+    }
+
+    float DotProduct(Vector2 a, Vector2 b, Vector2 c)
+    {
+        // Get the vectors' coordinates.
+        float BAx = a.x - b.x;
+        float BAy = a.y - b.y;
+        float BCx = c.x - b.x;
+        float BCy = c.y - b.y;
+
+        // Calculate the dot product.
+        return (BAx * BCx + BAy * BCy);
     }
 
     Vector3 FindCentroid(Vector3[] points)
@@ -225,12 +286,6 @@ public class LineDraw : MonoBehaviour
         foreach (Vector3 gizPoint in gizmoPoints)
         {
             Gizmos.DrawWireSphere(gizPoint, 0.1f);
-        }
-
-        Gizmos.color = Color.green;
-        foreach (Vector3 point in insidePointsList)
-        {
-            Gizmos.DrawWireSphere(point, 0.1f);
         }
 
         Gizmos.color = Color.magenta;
